@@ -23,9 +23,8 @@ public class HDFSUtil {
         if (StringUtils.isBlank(dir)) {  
             return false;  
         }  
-        String fullPath = getFullPath("", dir);
-        Configuration conf = getConfiguration();  
-        FileSystem fs = FileSystem.get(URI.create(root), conf);  
+        String fullPath = getFullPath(root, dir);
+        FileSystem fs = getFileSystem(root);
         
         if (!fs.exists(new Path(fullPath))) {  
             fs.mkdirs(new Path(fullPath));  
@@ -40,9 +39,8 @@ public class HDFSUtil {
             return false;  
         }  
         String fullPath = getFullPath(root, dir);
-        Configuration conf = getConfiguration();  
-        FileSystem fs = FileSystem.get(URI.create(fullPath), conf);  
-        fs.delete(new Path(dir), true);  
+        FileSystem fs = getFileSystem(root);
+        fs.delete(new Path(fullPath), true);  
         fs.close();  
         return true;  
     }  
@@ -52,9 +50,8 @@ public class HDFSUtil {
             return new ArrayList<String>();  
         }  
         String fullPath = getFullPath(root, dir);
-        Configuration conf = getConfiguration();  
-        FileSystem fs = FileSystem.get(URI.create(fullPath), conf);  
-        FileStatus[] stats = fs.listStatus(new Path(dir));  
+        FileSystem fs = getFileSystem(root);
+        FileStatus[] stats = fs.listStatus(new Path(fullPath));  
         List<String> names = new ArrayList<String>();  
         for (int i = 0; i < stats.length; ++i) {  
             if (stats[i].isFile()) {  
@@ -78,12 +75,11 @@ public class HDFSUtil {
             return false;  
         }  
         String fullPath = getFullPath(root, hdfsFile);
-        Configuration conf = getConfiguration();  
-        FileSystem hdfs = FileSystem.get(URI.create(fullPath), conf);  
+        FileSystem fs = getFileSystem(root);
         Path src = new Path(localFile);  
-        Path dst = new Path(hdfsFile);  
-        hdfs.copyFromLocalFile(src, dst);  
-        hdfs.close();  
+        Path dst = new Path(fullPath);  
+        fs.copyFromLocalFile(src, dst);  
+        fs.close();  
         return true;  
     }  
 	
@@ -92,12 +88,11 @@ public class HDFSUtil {
             return false;  
         }  
         String fullPath = getFullPath(root, newFile);
-        Configuration conf = getConfiguration();  
-        FileSystem hdfs = FileSystem.get(URI.create(fullPath), conf);  
-        FSDataOutputStream os = hdfs.create(new Path(fullPath));  
+        FileSystem fs = getFileSystem(root);
+        FSDataOutputStream os = fs.create(new Path(fullPath));  
         os.write(content.getBytes("UTF-8"));  
         os.close();  
-        hdfs.close();  
+        fs.close();  
         return true;  
     }  
 	
@@ -106,11 +101,10 @@ public class HDFSUtil {
             return false;  
         }  
         String fullPath = getFullPath(root, hdfsFile);
-        Configuration conf = getConfiguration();  
-        FileSystem hdfs = FileSystem.get(URI.create(fullPath), conf);  
-        Path path = new Path(hdfsFile);  
-        boolean isDeleted = hdfs.delete(path, true);  
-        hdfs.close();  
+        FileSystem fs = getFileSystem(root);
+        Path path = new Path(fullPath);  
+        boolean isDeleted = fs.delete(path, true);  
+        fs.close();  
         return isDeleted;  
     }  
 	
@@ -119,10 +113,9 @@ public class HDFSUtil {
             return null;  
         }  
         String fullPath = getFullPath(root, hdfsFile);
-        Configuration conf = getConfiguration();  
-        FileSystem fs = FileSystem.get(URI.create(fullPath), conf);  
+        FileSystem fs = getFileSystem(root);
         // check if the file exists  
-        Path path = new Path(hdfsFile);  
+        Path path = new Path(fullPath);  
         if (fs.exists(path)) {  
             FSDataInputStream is = fs.open(path);  
             // get the file info to create the buffer  
@@ -151,13 +144,13 @@ public class HDFSUtil {
         // solve the problem when appending at single datanode hadoop env    
         conf.set("dfs.client.block.write.replace-datanode-on-failure.policy", "NEVER");  
         conf.set("dfs.client.block.write.replace-datanode-on-failure.enable", "true");  
-        FileSystem fs = FileSystem.get(URI.create(fullPath), conf);  
+        FileSystem fs = FileSystem.get(URI.create(root), conf);  
         // check if the file exists  
         Path path = new Path(fullPath);  
         if (fs.exists(path)) {  
             try {  
                 InputStream in = new ByteArrayInputStream(content.getBytes());  
-                OutputStream out = fs.append(new Path(hdfsFile));  
+                OutputStream out = fs.append(new Path(fullPath));  
                 IOUtils.copyBytes(in, out, 4096, true);  
                 out.close();  
                 in.close();  
@@ -174,7 +167,7 @@ public class HDFSUtil {
 	
 	public static String getFullPath(String root, String path) {
 		String split = DEFAULT_SPLIT;
-		String tmp = root;
+		String tmp = "";
 		if (!tmp.endsWith(split)) {
 			tmp = tmp.concat(split);
 		}
@@ -190,9 +183,17 @@ public class HDFSUtil {
 	
 	public static Configuration getConfiguration() {
 		Configuration conf = new Configuration();
-//		conf.set("fs.defaultFS", "hdfs://10.10.21.71:9000");
 		conf.set("fs.hdfs.impl",org.apache.hadoop.hdfs.DistributedFileSystem.class.getName());    
 		return conf;
+	}
+	
+	public static FileSystem getFileSystem(String root, Configuration conf) throws IOException {
+		FileSystem fs = FileSystem.get(URI.create(root), conf);  
+		return fs;
+	}
+	
+	public static FileSystem getFileSystem(String root) throws IOException {
+		return getFileSystem(root, getConfiguration());
 	}
   
 }
