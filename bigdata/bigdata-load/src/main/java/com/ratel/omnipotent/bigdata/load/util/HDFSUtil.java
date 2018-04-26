@@ -23,12 +23,12 @@ public class HDFSUtil {
         if (StringUtils.isBlank(dir)) {  
             return false;  
         }  
-        String fullPath = getFullPath(root, dir);
+        String fullPath = getFullPath("", dir);
         Configuration conf = getConfiguration();  
-        FileSystem fs = FileSystem.get(URI.create(fullPath), conf);  
+        FileSystem fs = FileSystem.get(URI.create(root), conf);  
         
-        if (!fs.exists(new Path(dir))) {  
-            fs.mkdirs(new Path(dir));  
+        if (!fs.exists(new Path(fullPath))) {  
+            fs.mkdirs(new Path(fullPath));  
         }  
   
         fs.close();  
@@ -178,6 +178,7 @@ public class HDFSUtil {
 		if (!tmp.endsWith(split)) {
 			tmp = tmp.concat(split);
 		}
+		tmp = tmp.concat("test").concat(split);
 		if (!path.startsWith(split)) {
 			tmp = tmp.concat(path);
 		} else {
